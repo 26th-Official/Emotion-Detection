@@ -69,9 +69,9 @@ def build_model(hp):
                   metrics=['accuracy'])
   return model
 
-  ***********************
+**************************
 
-  tuner = kt.BayesianOptimization(
+tuner = kt.BayesianOptimization(
     build_model,
     objective=kt.Objective('val_accuracy', 'max'),
     max_trials=10,
@@ -104,4 +104,14 @@ for x in range(top_result):
 Because convergence can be a bit bumpy, the patience parameter allows us to configure the number of epochs for which we want the validation accuracy to not decrease before training is stopped.
 
 --------------------------------------------------------
+
+First, choose your training method based on the size of your dataset:
+
+    If you have a very small dataset (less than one thousand images per label), use transfer learning.
+
+    If you have a moderate-sized dataset (one to five thousand images per label), use fine-tuning.
+
+    If you have a large dataset (more than five thousand images per label), train from scratch.
+
+---------------------------------------------------------
 
