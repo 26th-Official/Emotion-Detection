@@ -39,3 +39,69 @@ A common mistake is to use convolution kernels that are too large. For example, 
 Note that the number of filters doubles as we climb up the CNN toward the output layer (it is initially 64, then 128, then 256): it makes sense for it to grow, since the number of low-level features is often fairly low (e.g., small circles, horizontal lines), but there are many different ways to combine them into higher-level features. It is a common practice to double the number of filters after each pooling layer: since a pooling layer divides each spatial dimension by a factor of 2, we can afford to double the number of feature maps in the next layer without fear of exploding the number of parameters, memory usage, or computational load.
 
 --------------------------------------------------------
+
+Hyper Parameter? 
+
+import kerastuner as kt
+# parameterize to the values in the previous cell
+def build_model(hp):
+    lrate = hp.Float('lrate', 1e-4, 1e-1, sampling='log')
+    l1 = 0
+    l2 = hp.Choice('l2', values=[0.0, 1e-1, 1e-2, 1e-3, 1e-4])
+    num_hidden = hp.Int('num_hidden', 32, 256, 32)
+
+    regularizer = tf.keras.regularizers.l1_l2(l1, l2)
+
+    # NN with one hidden layer
+    model = tf.keras.Sequential([
+        tf.keras.layers.Flatten(
+            input_shape=(IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)),
+        tf.keras.layers.Dense(num_hidden,
+                              kernel_regularizer=regularizer,
+                              activation=tf.keras.activations.relu),
+        tf.keras.layers.Dense(len(CLASS_NAMES),
+                              kernel_regularizer=regularizer,
+                              activation='softmax')
+    ])
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=lrate),
+                  loss=tf.keras.losses.SparseCategoricalCrossentropy(
+                              from_logits=False),
+                  metrics=['accuracy'])
+  return model
+
+  ***********************
+
+  tuner = kt.BayesianOptimization(
+    build_model,
+    objective=kt.Objective('val_accuracy', 'max'),
+    max_trials=10,
+    num_initial_points=2,
+    overwrite=False) # True to start afresh
+
+tuner.search(
+    train_dataset, validation_data=eval_dataset,
+    epochs=5,
+    callbacks=[tf.keras.callbacks.EarlyStopping(patience=1)]
+)
+
+**************************
+
+At the end of the run, we can get the top N trials (the ones that ended with the highest validation accuracy) using:
+
+top_result = 2
+for x in range(top_result):
+    print(tuner.get_best_hyperparameters(topN)[x].values)
+    print(tuner.get_best_models(topN)[x].summary())
+
+
+--------------------------------------------------------
+
+>>> history = model.fit(train_dataset,
+...                     validation_data=eval_dataset,
+...                     epochs=10,
+...                     callbacks=[tf.keras.callbacks.EarlyStopping(patience=1)])
+
+Because convergence can be a bit bumpy, the patience parameter allows us to configure the number of epochs for which we want the validation accuracy to not decrease before training is stopped.
+
+--------------------------------------------------------
+
